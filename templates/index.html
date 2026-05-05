@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4"><i class="fas fa-chart-line"></i> Dashboard</h2>
+
+<div class="row" id="dashboardStats">
+    <div class="col-md-3 mb-3">
+        <div class="card card-stats">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="text-muted">Today's Revenue</h6>
+                        <h3 id="todayRevenue">-</h3>
+                    </div>
+                    <div class="stat-icon bg-success bg-opacity-10">
+                        <i class="fas fa-dollar-sign text-success"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card card-stats">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="text-muted">Today's Profit</h6>
+                        <h3 id="todayProfit">-</h3>
+                    </div>
+                    <div class="stat-icon bg-primary bg-opacity-10">
+                        <i class="fas fa-chart-line text-primary"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card card-stats">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="text-muted">Today's Loss</h6>
+                        <h3 id="todayLoss">-</h3>
+                    </div>
+                    <div class="stat-icon bg-danger bg-opacity-10">
+                        <i class="fas fa-trash text-danger"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card card-stats">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="text-muted">Stock Value</h6>
+                        <h3 id="stockValue">-</h3>
+                    </div>
+                    <div class="stat-icon bg-info bg-opacity-10">
+                        <i class="fas fa-boxes text-info"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-box"></i> Current Stock</h5>
+            </div>
+            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                <table class="table table-sm">
+                    <thead>
+                        <tr><th>Item</th><th>Quantity</th><th>Cost Price</th><th>Value</th></tr>
+                    </thead>
+                    <tbody id="stockTable"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-exclamation-triangle"></i> Low Stock Alert</h5>
+            </div>
+            <div class="card-body" id="lowStockAlert">
+                <p class="text-muted">Loading...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-receipt"></i> Recent Sales</h5>
+            </div>
+            <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                <table class="table table-sm">
+                    <thead><tr><th>Item</th><th>Qty</th><th>Revenue</th><th>Profit</th></tr></thead>
+                    <tbody id="recentSales"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-waste"></i> Recent Waste</h5>
+            </div>
+            <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                <table class="table table-sm">
+                    <thead><tr><th>Item</th><th>Qty</th><th>Loss Value</th></tr></thead>
+                    <tbody id="recentWaste"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function loadDashboard() {
+    try {
+        const response = await fetch('/api/dashboard');
+        const data = await response.json();
+        
+        // Update stats
+        document.getElementById('todayRevenue').innerText = '$' + data.today.revenue.toFixed(2);
+        document.getElementById('todayProfit').innerText = '$' + data.today.profit.toFixed(2);
+        document.getElementById('todayLoss').innerText = '$' + data.today.loss.toFixed(2);
+        document.getElementById('stockValue').innerText = '$' + data.inventory.total_stock_value.toFixed(2);
+        
+        // Stock table
+        const stockTable = document.getElementById('stockTable');
+        stockTable.innerHTML = '';
+        data.all_items.forEach(item => {
+            stockTable.innerHTML += `<tr>
+                <td>${item.name}</td>
+                <td>${item.quantity_available}</td>
+                <td>$${item.cost_price.toFixed(2)}</td>
+                <td>$${item.stock_value.toFixed(2)}</td>
+            </tr>`;
+        });
+        
+        // Low stock alert
+        const lowStockDiv = document.getElementById('lowStockAlert');
+        if (data.inventory.low_stock_count > 0) {
+            lowStockDiv.innerHTML = '<div class="alert alert-warning">⚠️ ' + 
+                data.inventory.low_stock_items.map(i => `${i.name}: ${i.quantity} left`).join(', ') + 
+                '</div>';
+        } else {
+            lowStockDiv.innerHTML = '<div class="alert alert-success">✅ All items have sufficient stock</div>';
+        }
+        
+        // Recent sales
+        const recentSales = document.getElementById('recentSales');
+        recentSales.innerHTML = '';
+        data.recent_sales.forEach(sale => {
+            recentSales.innerHTML += `<tr>
+                <td>${sale.item_name}</td>
+                <td>${sale.quantity}</td>
+                <td>$${sale.total_revenue.toFixed(2)}</td>
+                <td>$${sale.profit.toFixed(2)}</td>
+            </tr>`;
+        });
+        
+        // Recent waste
+        const recentWaste = document.getElementById('recentWaste');
+        recentWaste.innerHTML = '';
+        data.recent_waste.forEach(waste => {
+            recentWaste.innerHTML += `<tr>
+                <td>${waste.item_name}</td>
+                <td>${waste.quantity}</td>
+                <td>$${waste.loss_value.toFixed(2)}</td>
+            </tr>`;
+        });
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+    }
+}
+
+loadDashboard();
+setInterval(loadDashboard, 30000); // Refresh every 30 seconds
+</script>
+{% endblock %}

@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4"><i class="fas fa-calendar-day"></i> Daily Report</h2>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <label class="form-label">Select Date</label>
+        <input type="date" id="reportDate" class="form-control w-50">
+        <button class="btn btn-primary mt-2" onclick="loadReport()">View Report</button>
+    </div>
+</div>
+
+<div id="reportContent"></div>
+
+<script>
+async function loadReport() {
+    const date = document.getElementById('reportDate').value || new Date().toISOString().split('T')[0];
+    document.getElementById('reportDate').value = date;
+    
+    try {
+        const response = await fetch(`/api/daily-report?date=${date}`);
+        const data = await response.json();
+        
+        const container = document.getElementById('reportContent');
+        container.innerHTML = `
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card bg-success text-white mb-3">
+                        <div class="card-body">
+                            <h5>Total Revenue</h5>
+                            <h3>$${data.sales.total_revenue.toFixed(2)}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-primary text-white mb-3">
+                        <div class="card-body">
+                            <h5>Total Profit</h5>
+                            <h3>$${data.sales.total_profit.toFixed(2)}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-danger text-white mb-3">
+                        <div class="card-body">
+                            <h5>Loss from Waste</h5>
+                            <h3>$${data.waste.total_loss.toFixed(2)}</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Sales Details</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table">
+                                <thead><tr><th>Item</th><th>Qty</th><th>Selling Price</th><th>Revenue</th><th>Profit</th></tr></thead>
+                                <tbody>
+                                    ${data.sales.transactions.map(s => `
+                                        <tr>
+                                            <td>${s.item_name}</td>
+                                            <td>${s.quantity}</td>
+                                            <td>$${s.selling_price.toFixed(2)}</td>
+                                            <td>$${s.total_revenue.toFixed(2)}</td>
+                                            <td>$${s.profit.toFixed(2)}</td>
+                                        </tr>
+                                    `).join('')}
+                                    ${data.sales.transactions.length === 0 ? '<tr><td colspan="5" class="text-center">No sales recorded</td></tr>' : ''}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Waste Details</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table">
+                                <thead><tr><th>Item</th><th>Qty</th><th>Cost/Unit</th><th>Loss Value</th></tr></thead>
+                                <tbody>
+                                    ${data.waste.transactions.map(w => `
+                                        <tr>
+                                            <td>${w.item_name}</td>
+                                            <td>${w.quantity}</td>
+                                            <td>$${w.cost_price.toFixed(2)}</td>
+                                            <td>$${w.loss_value.toFixed(2)}</td>
+                                        </tr>
+                                    `).join('')}
+                                    ${data.waste.transactions.length === 0 ? '<tr><td colspan="4" class="text-center">No waste recorded</td></tr>' : ''}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5>Stock Added on ${data.date}</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <thead><tr><th>Item</th><th>Quantity</th><th>Cost Price</th></tr></thead>
+                        <tbody>
+                            ${data.stock_added.map(s => `
+                                <tr>
+                                    <td>${s.item_name}</td>
+                                    <td>${s.quantity}</td>
+                                    <td>$${s.cost_price.toFixed(2)}</td>
+                                </tr>
+                            `).join('')}
+                            ${data.stock_added.length === 0 ? '<tr><td colspan="3" class="text-center">No stock added</td></tr>' : ''}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        document.getElementById('reportContent').innerHTML = `<div class="alert alert-danger">Error loading report: ${error.message}</div>`;
+    }
+}
+
+// Load today's report by default
+loadReport();
+</script>
+{% endblock %}
